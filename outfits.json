@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "nama": "Kemeja Putih",
+    "kategori": "Atasan",
+    "warna": "Putih",
+    "musim": "Panas",
+    "deskripsi": "Kemeja putih lengan panjang, cocok untuk formal maupun semi formal.",
+    "formalitas": 3,
+    "lastUsed": "2025-06-18T19:29:36.473355871+07:00"
+  },
+  {
+    "id": 2,
+    "nama": "Celana Hitam",
+    "kategori": "Bawahan",
+    "warna": "Hitam",
+    "musim": "Panas",
+    "deskripsi": "Celana hitam cocok untuk acara formal atau semi formal",
+    "formalitas": 3,
+    "lastUsed": "2025-06-19T19:30:47.558242937+07:00"
+  }
+]

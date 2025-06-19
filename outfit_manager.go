@@ -2,7 +2,9 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -11,16 +13,17 @@ import (
 
 // === Deklarasi Struct, Konstanta, dan Variabel Global ===
 const MAX_OUTFITS = 100
+const JSON_FILE = "outfits.json"
 
 type Outfit struct {
-	ID         int
-	Nama       string
-	Kategori   string
-	Warna      string
-	Musim      string
-	Deskripsi  string
-	Formalitas int
-	LastUsed   time.Time
+	ID         int       `json:"id"`
+	Nama       string    `json:"nama"`
+	Kategori   string    `json:"kategori"`
+	Warna      string    `json:"warna"`
+	Musim      string    `json:"musim"`
+	Deskripsi  string    `json:"deskripsi"`
+	Formalitas int       `json:"formalitas"`
+	LastUsed   time.Time `json:"lastUsed"`
 }
 
 var (
@@ -28,6 +31,59 @@ var (
 	nOutfits int = 0
 	scanner      = bufio.NewScanner(os.Stdin)
 )
+
+// === Fungsi untuk menyimpan dan memuat dari JSON ===
+
+func saveToJSON() {
+	// Hanya simpan bagian dari slice yang berisi data
+	data, err := json.MarshalIndent(outfits[:nOutfits], "", "  ")
+	if err != nil {
+		fmt.Println("Error encoding to JSON:", err)
+		return
+	}
+
+	err = ioutil.WriteFile(JSON_FILE, data, 0644)
+	if err != nil {
+		fmt.Println("Error writing to JSON file:", err)
+	}
+}
+
+func loadFromJSON() {
+	data, err := ioutil.ReadFile(JSON_FILE)
+	if err != nil {
+		if os.IsNotExist(err) {
+			fmt.Println("File JSON tidak ditemukan, memulai dengan data kosong.")
+			// Inisialisasi data awal jika file tidak ada
+			outfits[0] = Outfit{
+				ID:         1,
+				Nama:       "Kemeja Putih",
+				Kategori:   "Atasan",
+				Warna:      "Putih",
+				Musim:      "Panas",
+				Deskripsi:  "Kemeja putih lengan panjang, cocok untuk formal maupun semi formal.",
+				Formalitas: 3,
+				LastUsed:   time.Now().AddDate(0, 0, -1),
+			}
+			nOutfits = 1
+			saveToJSON() // Simpan data awal
+		} else {
+			fmt.Println("Error reading JSON file:", err)
+		}
+		return
+	}
+
+	// Buat slice sementara untuk unmarshal
+	var tempOutfits []Outfit
+	err = json.Unmarshal(data, &tempOutfits)
+	if err != nil {
+		fmt.Println("Error decoding JSON:", err)
+		return
+	}
+
+	// Salin data dari slice sementara ke array global
+	nOutfits = copy(outfits[:], tempOutfits)
+	fmt.Println("Data outfit berhasil dimuat dari", JSON_FILE)
+}
 
 // === Fungsi Input Helper ===
 func input() string {
@@ -69,6 +125,10 @@ func binarySearchKategori(kat string) int {
 	for low <= high {
 		mid := (low + high) / 2
 		if strings.EqualFold(outfits[mid].Kategori, kat) {
+			// Karena mungkin ada duplikat, cari yang pertama
+			for mid > low && strings.EqualFold(outfits[mid-1].Kategori, kat) {
+				mid--
+			}
 			return mid
 		} else if strings.ToLower(outfits[mid].Kategori) < strings.ToLower(kat) {
 			low = mid + 1
@@ -140,6 +200,10 @@ func insertionSortLastUsed(asc bool) {
 
 // === Fungsi Tampil ===
 func tampilOutfits() {
+	if nOutfits == 0 {
+		fmt.Println("\nBelum ada outfit untuk ditampilkan.")
+		return
+	}
 	fmt.Println("\nDaftar Outfit:")
 	for i := 0; i < nOutfits; i++ {
 		fmt.Printf("%d. %s | %s | %s | %s | Formalitas: %d | Terakhir Dipakai: %s\n",
@@ -150,6 +214,10 @@ func tampilOutfits() {
 }
 
 func tampilDetail(idx int) {
+	if idx < 0 || idx >= nOutfits {
+		fmt.Println("Indeks outfit tidak valid.")
+		return
+	}
 	fmt.Println("\nDetail Outfit:")
 	fmt.Printf("ID: %d\n", outfits[idx].ID)
 	fmt.Printf("Nama: %s\n", outfits[idx].Nama)
@@ -167,6 +235,16 @@ func tambahOutfit() {
 		fmt.Println("Kapasitas penuh!")
 		return
 	}
+
+	// Cari ID tertinggi untuk menentukan ID baru
+	maxID := 0
+	for i := 0; i < nOutfits; i++ {
+		if outfits[i].ID > maxID {
+			maxID = outfits[i].ID
+		}
+	}
+	newID := maxID + 1
+
 	fmt.Println("\nTambah Outfit Baru")
 	fmt.Print("Nama Outfit: ")
 	nama := input()
@@ -187,7 +265,7 @@ func tambahOutfit() {
 	}
 
 	outfits[nOutfits] = Outfit{
-		ID:         nOutfits + 1,
+		ID:         newID,
 		Nama:       nama,
 		Kategori:   kategori,
 		Warna:      warna,
@@ -197,14 +275,19 @@ func tambahOutfit() {
 		LastUsed:   time.Now(),
 	}
 	nOutfits++
+	saveToJSON() // Simpan ke file setelah menambah
 	fmt.Println("Outfit berhasil ditambahkan!")
 }
 
 func editOutfit() {
 	fmt.Print("Masukkan ID outfit yang ingin diedit: ")
-	var id int
-	fmt.Scan(&id)
-	scanner.Scan()
+	idStr := input()
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		fmt.Println("ID tidak valid.")
+		return
+	}
+
 	idx := cariIdxByID(id)
 	if idx == -1 {
 		fmt.Println("Outfit tidak ditemukan.")
@@ -247,14 +330,19 @@ func editOutfit() {
 			fmt.Println("Input formalitas tidak valid, tidak diubah.")
 		}
 	}
+	saveToJSON() // Simpan ke file setelah mengedit
 	fmt.Println("Outfit berhasil diubah.")
 }
 
 func hapusOutfit() {
 	fmt.Print("Masukkan ID outfit yang ingin dihapus: ")
-	var id int
-	fmt.Scan(&id)
-	scanner.Scan()
+	idStr := input()
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		fmt.Println("ID tidak valid.")
+		return
+	}
+
 	idx := cariIdxByID(id)
 	if idx == -1 {
 		fmt.Println("Outfit tidak ditemukan.")
@@ -264,6 +352,7 @@ func hapusOutfit() {
 		outfits[i] = outfits[i+1]
 	}
 	nOutfits--
+	saveToJSON() // Simpan ke file setelah menghapus
 	fmt.Println("Outfit berhasil dihapus.")
 }
 
@@ -278,9 +367,8 @@ func menuCariOutfit() {
 	fmt.Println("2. Kategori (Binary Search, urutkan dulu)")
 	fmt.Println("3. Warna (Sequential Search)")
 	fmt.Print("Pilih: ")
-	var pil int
-	fmt.Scan(&pil)
-	scanner.Scan()
+	pilStr := input()
+	pil, _ := strconv.Atoi(pilStr)
 
 	switch pil {
 	case 1:
@@ -293,7 +381,7 @@ func menuCariOutfit() {
 			fmt.Println("Outfit tidak ditemukan.")
 		}
 	case 2:
-		insertionSortKategori(true)
+		insertionSortKategori(true) // Binary search memerlukan data terurut
 		fmt.Print("Masukkan kategori: ")
 		kat := input()
 		idx := binarySearchKategori(kat)
@@ -307,6 +395,7 @@ func menuCariOutfit() {
 		warna := input()
 		idxs := seqSearchWarna(warna)
 		if len(idxs) > 0 {
+			fmt.Printf("\nDitemukan %d outfit dengan warna %s:\n", len(idxs), warna)
 			for _, idx := range idxs {
 				tampilDetail(idx)
 			}
@@ -331,17 +420,16 @@ func menuLihatOutfit() {
 	fmt.Println("3. Formalitas (Selection Sort)")
 	fmt.Println("4. Terakhir Dipakai (Insertion Sort)")
 	fmt.Print("Pilih: ")
-	var pil int
-	fmt.Scan(&pil)
-	scanner.Scan()
+	pilStr := input()
+	pil, _ := strconv.Atoi(pilStr)
 
-	fmt.Println("Urutan:")
+	fmt.Println("\nUrutan:")
 	fmt.Println("1. Ascending")
 	fmt.Println("2. Descending")
 	fmt.Print("Pilih: ")
-	var urut int
-	fmt.Scan(&urut)
-	scanner.Scan()
+	urutStr := input()
+	urut, _ := strconv.Atoi(urutStr)
+
 	asc := urut == 1
 
 	switch pil {
@@ -372,63 +460,54 @@ func planOOTD() {
 	fmt.Println("2. Semi Formal (2)")
 	fmt.Println("3. Formal (3)")
 	fmt.Print("Masukkan pilihan: ")
-	var f int
-	fmt.Scan(&f)
-	scanner.Scan()
-	if f < 1 || f > 3 {
+	fStr := input()
+	f, err := strconv.Atoi(fStr)
+	if err != nil || f < 1 || f > 3 {
 		fmt.Println("Pilihan formalitas tidak valid.")
 		return
 	}
 
 	// Cari outfit yang formalitasnya sesuai dan terbaru (LastUsed paling lama)
 	var kandidatIdx = -1
-	var oldest time.Time = time.Now()
+	var oldest time.Time
+	found := false
 	for i := 0; i < nOutfits; i++ {
 		if outfits[i].Formalitas == f {
-			if kandidatIdx == -1 || outfits[i].LastUsed.Before(oldest) {
+			if !found {
+				kandidatIdx = i
+				oldest = outfits[i].LastUsed
+				found = true
+			} else if outfits[i].LastUsed.Before(oldest) {
 				kandidatIdx = i
 				oldest = outfits[i].LastUsed
 			}
 		}
 	}
-	if kandidatIdx == -1 {
+	if !found {
 		fmt.Println("Tidak ada outfit dengan formalitas tersebut.")
 		return
 	}
 
 	// Update LastUsed ke sekarang karena akan dipakai
 	outfits[kandidatIdx].LastUsed = time.Now()
-	fmt.Println("Rekomendasi Outfit OOTD:")
+	saveToJSON() // Simpan perubahan LastUsed
+	fmt.Println("\nRekomendasi Outfit OOTD:")
 	tampilDetail(kandidatIdx)
 }
 
 // === Fungsi Main Menu ===
 func mainMenu() {
-
-	outfits[0] = Outfit{
-		ID:         1,
-		Nama:       "Kemeja Putih",
-		Kategori:   "Atasan",
-		Warna:      "Putih",
-		Musim:      "Panas",
-		Deskripsi:  "Kemeja putih lengan panjang, cocok untuk formal maupun semi formal.",
-		Formalitas: 3,
-		LastUsed:   time.Now().AddDate(0, 0, -1),
-	}
-	nOutfits = 1
-
 	for {
 		fmt.Println("\n--- Manajemen Outfit ---")
 		fmt.Println("1. Tambah Outfit")
 		fmt.Println("2. Edit Outfit")
 		fmt.Println("3. Hapus Outfit")
 		fmt.Println("4. Cari Outfit")
-		fmt.Println("5. Lihat Outfit")
+		fmt.Println("5. Lihat Outfit (Sortir)")
 		fmt.Println("6. Plan OOTD")
 		fmt.Println("0. Keluar")
 		fmt.Print("Pilih menu: ")
 
-		var pil int
 		inputLine := input()
 		pil, err := strconv.Atoi(inputLine)
 		if err != nil {
@@ -459,5 +538,6 @@ func mainMenu() {
 }
 
 func main() {
+	loadFromJSON() // Muat data dari file saat program dimulai
 	mainMenu()
 }
