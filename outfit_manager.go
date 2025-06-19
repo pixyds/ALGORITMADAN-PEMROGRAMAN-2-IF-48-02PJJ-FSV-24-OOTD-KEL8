@@ -103,7 +103,10 @@ func cariIdxByID(id int) int {
 
 func seqSearchNama(nama string) int {
 	for i := 0; i < nOutfits; i++ {
-		if strings.EqualFold(outfits[i].Nama, nama) {
+		lowerNamaStr := strings.ToLower(nama)
+		lowerOutfitNama := strings.ToLower(outfits[i].Nama)
+		fmt.Println(lowerOutfitNama, lowerNamaStr)
+		if strings.EqualFold(lowerNamaStr, lowerOutfitNama) {
 			return i
 		}
 	}
@@ -113,7 +116,9 @@ func seqSearchNama(nama string) int {
 func seqSearchWarna(warna string) []int {
 	var hasil []int
 	for i := 0; i < nOutfits; i++ {
-		if strings.EqualFold(outfits[i].Warna, warna) {
+		lowerWarnaStr := strings.ToLower(warna)
+		lowerOutfitWarna := strings.ToLower(outfits[i].Warna)
+		if strings.EqualFold(lowerOutfitWarna, lowerWarnaStr) {
 			hasil = append(hasil, i)
 		}
 	}
