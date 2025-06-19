@@ -105,7 +105,7 @@ func seqSearchNama(nama string) int {
 	for i := 0; i < nOutfits; i++ {
 		lowerNamaStr := strings.ToLower(nama)
 		lowerOutfitNama := strings.ToLower(outfits[i].Nama)
-		fmt.Println(lowerOutfitNama, lowerNamaStr)
+
 		if strings.EqualFold(lowerNamaStr, lowerOutfitNama) {
 			return i
 		}
