@@ -19,7 +19,7 @@ type Outfit struct {
 	Warna      string
 	Musim      string
 	Deskripsi  string
-	Formalitas int 
+	Formalitas int
 	LastUsed   time.Time
 }
 
@@ -404,6 +404,19 @@ func planOOTD() {
 
 // === Fungsi Main Menu ===
 func mainMenu() {
+
+	outfits[0] = Outfit{
+		ID:         1,
+		Nama:       "Kemeja Putih",
+		Kategori:   "Atasan",
+		Warna:      "Putih",
+		Musim:      "Panas",
+		Deskripsi:  "Kemeja putih lengan panjang, cocok untuk formal maupun semi formal.",
+		Formalitas: 3,
+		LastUsed:   time.Now().AddDate(0, 0, -1),
+	}
+	nOutfits = 1
+
 	for {
 		fmt.Println("\n--- Manajemen Outfit ---")
 		fmt.Println("1. Tambah Outfit")
